@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>本格リアルタイムチャットアプリ</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col m-0 p-0 overflow-hidden">
+
+  <!-- ================= 認証画面 (ログイン / 新規登録) ================= -->
+  <div id="auth-screen" class="flex flex-col items-center justify-center h-full w-full bg-gray-950 px-4">
+    <div class="bg-gray-900 p-8 rounded-2xl shadow-2xl border border-gray-800 w-full max-w-md text-center">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-600 text-white text-3xl mb-4">
+        <i class="fa-solid fa-comments"></i>
+      </div>
+      <h1 class="text-2xl font-bold text-white mb-2" id="auth-title">チャットアプリへようこそ</h1>
+      <p class="text-gray-400 text-sm mb-6" id="auth-subtitle">ユーザー名とパスワードを入力してログインしてください</p>
+
+      <!-- フォーム -->
+      <div class="space-y-4 text-left">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">ユーザー名</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+              <i class="fa-solid fa-user"></i>
+            </span>
+            <input type="text" id="auth-username" placeholder="example_user" 
+                   class="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 transition-colors">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">パスワード (6文字以上)</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+              <i class="fa-solid fa-lock"></i>
+            </span>
+            <input type="password" id="auth-password" placeholder="••••••••" 
+                   class="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 transition-colors">
+          </div>
+        </div>
+        
+        <button id="btn-primary-auth" class="w-full py-3 mt-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg transition-all transform active:scale-95">
+          ログイン
+        </button>
+      </div>
+
+      <!-- 切り替えリンク -->
+      <div class="mt-6 pt-4 border-t border-gray-800 text-sm text-gray-400">
+        <span id="auth-toggle-msg">アカウントをお持ちでないですか？</span>
+        <button id="btn-toggle-auth" class="text-indigo-400 hover:text-indigo-300 font-medium ml-1 focus:outline-none">
+          新規登録する
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= メインチャット画面 (初期状態は非表示) ================= -->
+  <div id="chat-screen" class="hidden flex h-full w-full overflow-hidden">
+    
+    <!-- サイドバー (チャンネル選択 & ユーザー情報) -->
+    <aside class="w-64 bg-gray-950 flex flex-col border-r border-gray-800 shrink-0">
+      <!-- アプリタイトル -->
+      <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+        <span class="font-bold text-lg text-white tracking-wide"><i class="fa-solid fa-comment-dots text-indigo-500 mr-2"></i>DevChat</span>
+      </div>
+      
+      <!-- チャンネル一覧 -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-1">
+        <p class="text-xs font-semibold text-gray-500 uppercase px-2 mb-2 tracking-wider">チャンネル</p>
+        <button onclick="switchRoom('general')" id="room-general" class="room-btn w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2 text-indigo-400 bg-gray-900 font-medium">
+          <i class="fa-solid fa-hashtag text-gray-500"></i><span>general</span>
+        </button>
+        <button onclick="switchRoom('random')" id="room-random" class="room-btn w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2 text-gray-400 hover:bg-gray-900 hover:text-gray-200 transition-colors">
+          <i class="fa-solid fa-hashtag text-gray-500"></i><span>random</span>
+        </button>
+        <button onclick="switchRoom('development')" id="room-development" class="room-btn w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2 text-gray-400 hover:bg-gray-900 hover:text-gray-200 transition-colors">
+          <i class="fa-solid fa-hashtag text-gray-500"></i><span>development</span>
+        </button>
+      </div>
+
+      <!-- 現在のユーザープロファイル & ログアウト -->
+      <div class="p-4 border-t border-gray-800 bg-gray-900/50 flex items-center justify-between">
+        <div class="flex items-center space-x-3 overflow-hidden">
+          <div class="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white text-sm shrink-0" id="user-avatar">
+            U
+          </div>
+          <div class="overflow-hidden">
+            <p class="text-sm font-semibold text-white truncate" id="user-display-name">ユーザー名</p>
+            <p class="text-xs text-gray-500 truncate">ログイン中</p>
+          </div>
+        </div>
+        <button id="btn-logout" class="text-gray-500 hover:text-rose-400 p-2 rounded-lg hover:bg-gray-800 transition-colors" title="ログアウト">
+          <i class="fa-solid fa-right-from-bracket text-lg"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- メインメッセージエリア -->
+    <main class="flex-1 flex flex-col bg-gray-900 h-full relative">
+      <!-- チャンネルヘッダー -->
+      <header class="h-14 border-b border-gray-800 px-6 flex items-center justify-between bg-gray-900/80 backdrop-blur shrink-0">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-hashtag text-gray-500 text-lg"></i>
+          <span class="font-bold text-white text-base" id="current-room-title">general</span>
+        </div>
+      </header>
+
+      <!-- メッセージ表示エリア -->
+      <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4">
+        <!-- メッセージがJavaScriptで動的に挿入されます -->
+      </div>
+
+      <!-- メッセージ入力エリア -->
+      <footer class="p-4 bg-gray-900 shrink-0">
+        <form id="chat-form" class="bg-gray-800 border border-gray-700 rounded-2xl p-2 flex items-end space-x-2 focus-within:border-indigo-500 transition-colors">
+          <!-- 画像添付ボタン -->
+          <label class="p-2.5 text-gray-400 hover:text-indigo-400 rounded-xl hover:bg-gray-700/50 cursor-pointer transition-colors shrink-0" title="画像をアップロード">
+            <i class="fa-solid fa-camera text-lg"></i>
+            <input type="file" id="image-input" accept="image/*" class="hidden">
+          </label>
+          
+          <!-- テキスト入力 -->
+          <textarea id="message-input" rows="1" placeholder="#general へのメッセージ" 
+                    class="flex-1 bg-transparent border-0 resize-none max-h-32 py-2 px-1 text-white focus:outline-none focus:ring-0 placeholder-gray-500 text-sm"></textarea>
+          
+          <!-- 送信ボタン -->
+          <button type="submit" class="p-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-md transition-all active:scale-95 shrink-0">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </form>
+      </footer>
+    </main>
+
+  </div>
+
+  <!-- ================= Firebase SDK とロジック ================= -->
+  <script type="module">
+    // Firebase v10 SDK のインポート
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { 
+      getAuth, 
+      createUserWithEmailAndPassword, 
+      signInWithEmailAndPassword, 
+      updateProfile,
+      onAuthStateChanged, 
+      signOut 
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      query, 
+      orderBy, 
+      onSnapshot, 
+      serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { 
+      getStorage, 
+      ref, 
+      uploadBytes, 
+      getDownloadURL 
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+    // ----------------------------------------------------
+    // 【重要】ご自身の Firebase プロジェクトの構成情報に書き換えてください
+    // ----------------------------------------------------
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Firebase 初期化
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // 状態管理用変数
+    let currentUser = null;
+    let currentRoom = "general";
+    let unsubscribeMessages = null;
+    let isSignUpMode = false; // ログイン画面か新規登録画面かのフラグ
+
+    // DOM要素の取得
+    const authScreen = document.getElementById("auth-screen");
+    const chatScreen = document.getElementById("chat-screen");
+    const authTitle = document.getElementById("auth-title");
+    const authSubtitle = document.getElementById("auth-subtitle");
+    const authUsernameInput = document.getElementById("auth-username");
+    const authPasswordInput = document.getElementById("auth-password");
+    const btnPrimaryAuth = document.getElementById("btn-primary-auth");
+    const btnToggleAuth = document.getElementById("btn-toggle-auth");
+    const authToggleMsg = document.getElementById("auth-toggle-msg");
+    
+    const userAvatar = document.getElementById("user-avatar");
+    const userDisplayName = document.getElementById("user-display-name");
+    const btnLogout = document.getElementById("btn-logout");
+    const currentRoomTitle = document.getElementById("current-room-title");
+    const messagesContainer = document.getElementById("messages-container");
+    const chatForm = document.getElementById("chat-form");
+    const messageInput = document.getElementById("message-input");
+    const imageInput = document.getElementById("image-input");
+
+    // ================= 1. 認証画面のモード切り替えロジック =================
+    btnToggleAuth.addEventListener("click", () => {
+      isSignUpMode = !isSignUpMode;
+      if (isSignUpMode) {
+        authTitle.innerText = "アカウントを作成";
+        authSubtitle.innerText = "新しく使用するユーザー名とパスワードを決めてください";
+        btnPrimaryAuth.innerText = "新規登録してログイン";
+        authToggleMsg.innerText = "既にアカウントをお持ちですか？";
+        btnToggleAuth.innerText = "ログインする";
+      } else {
+        authTitle.innerText = "チャットアプリへようこそ";
+        authSubtitle.innerText = "ユーザー名とパスワードを入力してログインしてください";
+        btnPrimaryAuth.innerText = "ログイン";
+        authToggleMsg.innerText = "アカウントをお持ちでないですか？";
+        btnToggleAuth.innerText = "新規登録する";
+      }
+    });
+
+    // ================= 2. 独自ユーザー名＆パスワードでのサインイン/アップ =================
+    btnPrimaryAuth.addEventListener("click", async () => {
+      const username = authUsernameInput.value.trim();
+      const password = authPasswordInput.value;
+
+      if (!username || !password) {
+        alert("ユーザー名とパスワードを入力してください。");
+        return;
+      }
+      if (password.length < 6) {
+        alert("パスワードは6文字以上にしてください。");
+        return;
+      }
+
+      // ユーザー名をFirebase Authで扱える疑似メールアドレス形式にマッピングする
+      // 例: "john" -> "john@internal-chat-system.local"
+      const fakeEmail = `${encodeURIComponent(username)}@internal-chat-system.local`;
+
+      try {
+        if (isSignUpMode) {
+          // 新規登録処理
+          const userCredential = await createUserWithEmailAndPassword(auth, fakeEmail, password);
+          // 登録成功後、プロフィールに実際のユーザー名をセット
+          await updateProfile(userCredential.user, {
+            displayName: username
+          });
+          alert("アカウントが作成されました！");
+        } else {
+          // ログイン処理
+          await signInWithEmailAndPassword(auth, fakeEmail, password);
+        }
+      } catch (error) {
+        console.error("認証エラー:", error);
+        if (error.code === "auth/username-already-in-use" || error.code === "auth/email-already-in-use") {
+          alert("そのユーザー名は既に使われています。");
+        } else if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
+          alert("ユーザー名またはパスワードが正しくありません。");
+        } else {
+          alert(`エラーが発生しました: ${error.message}`);
+        }
+      }
+    });
+
+    // ログアウト処理
+    btnLogout.addEventListener("click", () => {
+      signOut(auth).catch((error) => console.error("ログアウトエラー:", error));
+    });
+
+    // ================= 3. 認証状態の監視 (Auth State Observer) =================
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // ログイン成功時
+        currentUser = user;
+        authScreen.classList.add("hidden");
+        chatScreen.classList.remove("hidden");
+        
+        // 画面上のユーザー情報を更新
+        const name = user.displayName || "名無しユーザー";
+        userDisplayName.innerText = name;
+        userAvatar.innerText = name.charAt(0).toUpperCase();
+
+        // フォームプレースホルダーの更新とメッセージの読み込み
+        updateChatFileInfo();
+        loadMessages(currentRoom);
+      } else {
+        // ログアウト時、または未ログイン時
+        currentUser = null;
+        chatScreen.classList.add("hidden");
+        authScreen.classList.remove("hidden");
+        
+        // 監視中のリスナーがあれば解除
+        if (unsubscribeMessages) {
+          unsubscribeMessages();
+          unsubscribeMessages = null;
+        }
+      }
+    });
+
+    // ================= 4. チャットリアルタイム送受信ロジック =================
+    
+    // チャンネル切り替え関数 (グローバルに公開)
+    window.switchRoom = function(roomId) {
+      if (currentRoom === roomId) return;
+      
+      // UIのアクティブ状態を変更
+      document.querySelectorAll(".room-btn").forEach(btn => {
+        btn.classList.remove("text-indigo-400", "bg-gray-900", "font-medium");
+        btn.classList.add("text-gray-400", "hover:bg-gray-900", "hover:text-gray-200");
+      });
+      const activeBtn = document.getElementById(`room-${roomId}`);
+      if (activeBtn) {
+        activeBtn.classList.remove("text-gray-400", "hover:bg-gray-900", "hover:text-gray-200");
+        activeBtn.classList.add("text-indigo-400", "bg-gray-900", "font-medium");
+      }
+
+      currentRoom = roomId;
+      currentRoomTitle.innerText = roomId;
+      updateChatFileInfo();
+
+      // 新しいチャンネルのメッセージを読み込む
+      loadMessages(roomId);
+    };
+
+    function updateChatFileInfo() {
+      messageInput.placeholder = `#${currentRoom} へのメッセージ`;
+    }
+
+    // メッセージの読み込み (リアルタイムリスナー)
+    function loadMessages(roomId) {
+      // 既存のリスナーがあればまず解除
+      if (unsubscribeMessages) {
+        unsubscribeMessages();
+      }
+
+      messagesContainer.innerHTML = ""; // 画面を一度クリア
+
+      // 指定されたルームのメッセージ群を時間順で取得するクエリ設定
+      const q = query(
+        collection(db, "rooms", roomId, "messages"),
+        orderBy("createdAt", "asc")
+      );
+
+      // リアルタイムリスナー開始
+      unsubscribeMessages = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "added") {
+            renderMessage(change.doc.data());
+          }
+        });
+        // 最下部まで自動スクロール
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }, (error) => {
+        console.error("Firestore読み込みエラー:", error);
+      });
+    }
+
+    // 画面にメッセージパーツを描画
+    function renderMessage(data) {
+      if (!currentUser) return;
+      
+      const isMe = data.uid === currentUser.uid;
+      const messageWrapper = document.createElement("div");
+      messageWrapper.className = `flex items-start space-x-3 max-w-[80%] ${isMe ? "ml-auto flex-row-reverse space-x-reverse" : "mr-auto"}`;
+
+      // アバター
+      const initial = (data.senderName || "U").charAt(0).toUpperCase();
+      const avatarHtml = `<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${isMe ? "bg-indigo-600" : "bg-gray-700"}">${initial}</div>`;
+
+      // 本文コンテンツ (テキスト or 画像)
+      let bodyHtml = "";
+      if (data.imageUrl) {
+        bodyHtml = `<img src="${data.imageUrl}" alt="shared image" class="rounded-lg max-w-xs md:max-w-md max-h-64 object-cover mt-1 border border-gray-700 cursor-pointer" onclick="window.open('${data.imageUrl}', '_blank')">`;
+      } else {
+        bodyHtml = `<p class="text-sm leading-relaxed whitespace-pre-wrap break-all">${escapeHtml(data.text)}</p>`;
+      }
+
+      // タイムスタンプのフォーマット
+      let timeStr = "";
+      if (data.createdAt) {
+        const date = data.createdAt.toDate();
+        timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+      }
+
+      messageWrapper.innerHTML = `
+        ${avatarHtml}
+        <div class="flex flex-col ${isMe ? "items-end" : "items-start"}">
+          <div class="flex items-baseline space-x-2 ${isMe ? "flex-row-reverse space-x-reverse" : ""}">
+            <span class="text-xs font-semibold text-gray-300">${escapeHtml(data.senderName)}</span>
+            <span class="text-[10px] text-gray-500">${timeStr}</span>
+          </div>
+          <div class="mt-1 px-4 py-2.5 rounded-2xl text-white ${isMe ? "bg-indigo-600 rounded-tr-none" : "bg-gray-800 rounded-tl-none"}">
+            ${bodyHtml}
+          </div>
+        </div>
+      `;
+
+      messagesContainer.appendChild(messageWrapper);
+    }
+
+    // HTMLエスケープ（XSS対策）
+    function escapeHtml(str) {
+      if (!str) return "";
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // テキストメッセージの送信
+    chatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = messageInput.value.trim();
+      if (!text || !currentUser) return;
+
+      messageInput.value = ""; // 入力欄をクリア
+      messageInput.style.height = "auto";
+
+      try {
+        await addDoc(collection(db, "rooms", currentRoom, "messages"), {
+          text: text,
+          uid: currentUser.uid,
+          senderName: currentUser.displayName || "名無しユーザー",
+          createdAt: serverTimestamp()
+        });
+      } catch (error) {
+        console.error("メッセージ送信エラー:", error);
+        alert("送信に失敗しました。");
+      }
+    });
+
+    // ================= 5. 画像アップロードロジック =================
+    imageInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file || !currentUser) return;
+
+      // 簡単なファイルタイプチェック
+      if (!file.type.startsWith("image/")) {
+        alert("画像ファイルを選択してください。");
+        return;
+      }
+
+      // プログレス表示の代わりに一時的にUIを変更
+      const cameraIcon = document.querySelector(".fa-camera");
+      cameraIcon.className = "fa-solid fa-spinner fa-spin text-indigo-400 text-lg";
+
+      // 保存用の一意なパスを作成
+      const fileExtension = file.name.split(".").pop();
+      const storagePath = `rooms/${currentRoom}/${Date.now()}_${currentUser.uid}.${fileExtension}`;
+      const storageRef = ref(storage, storagePath);
+
+      try {
+        // Storageへアップロード
+        const snapshot = await uploadBytes(storageRef, file);
+        // 画像のダウンロードURLを取得
+        const downloadUrl = await getDownloadURL(snapshot.ref);
+
+        // Firestoreへ画像メッセージとして追加
+        await addDoc(collection(db, "rooms", currentRoom, "messages"), {
+          imageUrl: downloadUrl,
+          uid: currentUser.uid,
+          senderName: currentUser.displayName || "名無しユーザー",
+          createdAt: serverTimestamp()
+        });
+
+      } catch (error) {
+        console.error("画像アップロードエラー:", error);
+        alert("画像のアップロードまたは送信に失敗しました。");
+      } finally {
+        // アイコンを元に戻す
+        cameraIcon.className = "fa-solid fa-camera text-lg";
+        imageInput.value = ""; // インプットをクリア
+      }
+    });
+
+    // テキストエリアの自動伸縮
+    messageInput.addEventListener("input", function() {
+      this.style.height = "auto";
+      this.style.height = (this.scrollHeight) + "px";
+    });
+  </script>
+</body>
+</html>
